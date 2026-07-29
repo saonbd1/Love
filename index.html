@@ -461,6 +461,202 @@
     [nameA, nameB].forEach(inp => {
       inp.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
     });
+ async function mintNFT(name1, name2, score) {
+      if (!window.ethereum) {
+        alert("Please install MetaMask to mint NFTs");
+        return;
+      }
+      try {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const network = await provider.getNetwork();
+        if (network.chainId !== 763373) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: '0xdef1' }],
+            });
+          } catch (switchError) {
+            if (switchError.code === 4902) {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: '0xdef1',
+                  chainName: 'Ink Chain',
+                  nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+                  rpcUrls: ['https://rpc-gel.inkonchain.com'],
+                  blockExplorerUrls: ['https://explorer.inkonchain.com'],
+                }],
+              });
+            } else {
+              throw switchError;
+            }
+          }
+        }
+        const signer = provider.getSigner();
+        const contract = new ethers.Contract(contractAddress, abi, signer);
+        const tx = await contract.mint(name1, name2, score);
+        await tx.wait();
+        alert(`NFT Minted! Transaction: ${tx.hash}`);
+      } catch (error) {
+        alert("Minting failed: " + error.message);
+      }
+    }
+
+    async function connectWallet() {
+      if (typeof ethers === 'undefined') {
+        console.error('Ethers not loaded');
+        alert('Ethers library failed to load. Please refresh the page.');
+        return;
+      }
+      if (!window.ethereum) {
+        alert("Please install MetaMask to connect your wallet");
+        return;
+      }
+      try {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const network = await provider.getNetwork();
+        if (network.chainId !== 763373) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: '0xdef1' }],
+            });
+          } catch (switchError) {
+            if (switchError.code === 4902) {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: '0xdef1',
+                  chainName: 'Ink Chain',
+                  nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+                  rpcUrls: ['https://rpc-gel.inkonchain.com'],
+                  blockExplorerUrls: ['https://explorer.inkonchain.com'],
+                }],
+              });
+            } else {
+              throw switchError;
+            }
+          }
+        }
+        const signer = provider.getSigner();
+        const address = await signer.getAddress();
+        el("walletStatus").textContent = `Wallet: ${address.slice(0,6)}...${address.slice(-4)}`;
+        el("connectBtn").style.display = "none";
+        el("disconnectBtn").style.display = "block";
+      } catch (error) {
+        alert("Connection failed: " + error.message);
+      }
+    }
+
+    function disconnectWallet() {
+      el("walletStatus").textContent = "Wallet: Not connected";
+      el("connectBtn").style.display = "block";
+      el("disconnectBtn").style.display = "none";
+    }
+
+    function el(id) {
+      return document.getElementById(id);
+    }
+
+    let lastNameA = "";
+    let lastNameB = "";
+    let lastScore = 0;
+
+    const contractAddress = "0x66dF01e59AC8AC13575bB760500be7DBADf78D32";
+    const abi = ["function mint(string name1, string name2, uint8 score) public"];
+
+    function showResults(a, b) {
+      lastNameA = a;
+      lastNameB = b;
+      const out = calculate(a, b);
+      lastScore = out.score;
+
+      el("modalScoreNumber").textContent = `${out.score}%`;
+      el("modalScoreBadge").textContent = badgeFor(out.score);
+      el("modalScoreText").innerHTML = commentaryFor(out.score, a || "???", b || "???", out.rng);
+
+      const setMeter = (idFill, idVal, val) => {
+        el(idFill).style.width = `${val}%`;
+        el(idVal).textContent = `${val}%`;
+      };
+      setMeter("modalMVibe", "modalMVibeVal", out.meters.vibe);
+      setMeter("modalMSnack", "modalMSnackVal", out.meters.snack);
+      setMeter("modalMText", "modalMTextVal", out.meters.text);
+      setMeter("modalMMeme", "modalMMemeVal", out.meters.meme);
+
+      el("modalAdviceBox").innerHTML = adviceFor(out.score, out.rng);
+      el("resultModal").style.display = "block";
+
+      const hearts = Math.max(12, Math.round(20 + (out.score / 5)));
+      shootHearts(hearts);
+    }
+
+    function handleCalculate() {
+      const nameA = el("nameA");
+      const nameB = el("nameB");
+      
+      if (!nameA || !nameB) return;
+
+      const a = nameA.value.trim();
+      const b = nameB.value.trim();
+
+      if (!a || !b) {
+        el("modalScoreNumber").textContent = "0%";
+        el("modalScoreBadge").textContent = "Input needed";
+        el("modalScoreText").innerHTML = "Please enter both names to calculate your match!";
+        el("resultModal").style.display = "block";
+        return;
+      }
+
+      showResults(a, b);
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+      const btn = el("calcBtn");
+      const modal = el("resultModal");
+      const closeBtn = el("closeModal");
+
+      if (btn) {
+        btn.addEventListener("click", handleCalculate);
+      }
+
+      if (closeBtn) {
+        closeBtn.addEventListener("click", () => {
+          modal.style.display = "none";
+        });
+      }
+
+      if (modal) {
+        window.addEventListener("click", (e) => {
+          if (e.target === modal) {
+            modal.style.display = "none";
+          }
+        });
+      }
+
+      const mintBtn = el("mintBtn");
+      if (mintBtn) {
+        mintBtn.addEventListener("click", async () => {
+          if (lastNameA && lastNameB) {
+            await mintNFT(lastNameA, lastNameB, lastScore);
+          } else {
+            alert("Please calculate a love score first!");
+          }
+        });
+      }
+
+      const connectBtn = el("connectBtn");
+      if (connectBtn) {
+        connectBtn.addEventListener("click", connectWallet);
+      }
+
+      const disconnectBtn = el("disconnectBtn");
+      if (disconnectBtn) {
+        disconnectBtn.addEventListener("click", disconnectWallet);
+      }
+
 
     // Prefill a playful example
     window.addEventListener("DOMContentLoaded", () => {
