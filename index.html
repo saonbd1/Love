@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <title>Ridiculously Serious Love Calculator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <meta name="base:app_id" content="6a690cd13a2aba5706c66816" />
   <style>
     :root {
       --bg1: #ff9a9e;
@@ -376,6 +378,111 @@
       return h >>> 0;
     }
 
+     async function mintNFT(name1, name2, score) {
+      if (!window.ethereum) {
+        alert("Please install MetaMask to mint NFTs");
+        return;
+      }
+      try {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const network = await provider.getNetwork();
+        if (network.chainId !== 763373) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: '0xdef1' }],
+            });
+          } catch (switchError) {
+            if (switchError.code === 4902) {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: '0xdef1',
+                  chainName: 'Ink Chain',
+                  nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+                  rpcUrls: ['https://rpc-gel.inkonchain.com'],
+                  blockExplorerUrls: ['https://explorer.inkonchain.com'],
+                }],
+              });
+            } else {
+              throw switchError;
+            }
+          }
+        }
+        const signer = provider.getSigner();
+        const contract = new ethers.Contract(contractAddress, abi, signer);
+        const tx = await contract.mint(name1, name2, score);
+        await tx.wait();
+        alert(`NFT Minted! Transaction: ${tx.hash}`);
+      } catch (error) {
+        alert("Minting failed: " + error.message);
+      }
+    }
+
+    async function connectWallet() {
+      if (typeof ethers === 'undefined') {
+        console.error('Ethers not loaded');
+        alert('Ethers library failed to load. Please refresh the page.');
+        return;
+      }
+      if (!window.ethereum) {
+        alert("Please install MetaMask to connect your wallet");
+        return;
+      }
+      try {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const network = await provider.getNetwork();
+        if (network.chainId !== 763373) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: '0xdef1' }],
+            });
+          } catch (switchError) {
+            if (switchError.code === 4902) {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: '0xdef1',
+                  chainName: 'Ink Chain',
+                  nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+                  rpcUrls: ['https://rpc-gel.inkonchain.com'],
+                  blockExplorerUrls: ['https://explorer.inkonchain.com'],
+                }],
+              });
+            } else {
+              throw switchError;
+            }
+          }
+        }
+        const signer = provider.getSigner();
+        const address = await signer.getAddress();
+        el("walletStatus").textContent = `Wallet: ${address.slice(0,6)}...${address.slice(-4)}`;
+        el("connectBtn").style.display = "none";
+        el("disconnectBtn").style.display = "block";
+      } catch (error) {
+        alert("Connection failed: " + error.message);
+      }
+    }
+
+    function disconnectWallet() {
+      el("walletStatus").textContent = "Wallet: Not connected";
+      el("connectBtn").style.display = "block";
+      el("disconnectBtn").style.display = "none";
+    }
+
+    function el(id) {
+      return document.getElementById(id);
+    }
+
+    let lastNameA = "";
+    let lastNameB = "";
+    let lastScore = 0;
+
+    const contractAddress = "0x66dF01e59AC8AC13575bB760500be7DBADf78D32";
+    const abi = ["function mint(string name1, string name2, uint8 score) public"];
     // LCG PRNG
     function lcg(seed) {
       let state = seed >>> 0;
